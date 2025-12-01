@@ -514,6 +514,84 @@ body {
 }
 
 /* 반응형 디자인 */
+
+/* 데스크톱 - 큰 화면 */
+@media (min-width: 1025px) {
+    body {
+        max-width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .game-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .central-area {
+        min-height: 300px;
+    }
+
+    .last-played-card {
+        width: 160px;
+        height: 230px;
+    }
+
+    .my-cards-container {
+        max-width: 600px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+    }
+}
+
+/* 태블릿 */
+@media (min-width: 481px) and (max-width: 1024px) {
+    .game-header {
+        padding: 18px 25px;
+    }
+
+    .turn-info {
+        font-size: 1.2em;
+    }
+
+    .score-item {
+        min-width: 70px;
+    }
+
+    .game-log {
+        max-height: 180px;
+        margin: 15px;
+    }
+
+    .last-played-card {
+        width: 160px;
+        height: 230px;
+    }
+
+    .my-card {
+        width: 160px;
+        height: 230px;
+    }
+
+    .card-stack {
+        width: 180px;
+        height: 250px;
+    }
+
+    .opponent-card {
+        min-width: 120px;
+        padding: 15px;
+    }
+
+    .target-selection-panel,
+    .guess-panel,
+    .round-over-panel {
+        max-width: 500px;
+    }
+}
+
+/* 모바일 - 작은 화면 */
 @media (max-width: 480px) {
     .game-header {
         padding: 12px 15px;
@@ -560,6 +638,48 @@ body {
     }
 }
 
+/* 가로 모드 (모바일) */
+@media (max-height: 600px) and (orientation: landscape) {
+    .game-log {
+        max-height: 80px;
+    }
+
+    .central-area {
+        padding: 10px;
+        min-height: 150px;
+    }
+
+    .last-played-card {
+        width: 100px;
+        height: 140px;
+        margin-bottom: 10px;
+    }
+
+    .my-cards-container {
+        padding: 15px;
+    }
+
+    .my-card {
+        width: 100px;
+        height: 140px;
+    }
+
+    .card-stack {
+        width: 120px;
+        height: 160px;
+    }
+
+    .opponents-info {
+        margin-top: 10px;
+        gap: 10px;
+    }
+
+    .opponent-card {
+        padding: 8px;
+        min-width: 80px;
+    }
+}
+
 /* 애니메이션 효과 */
 .card-play-animation {
     animation: cardPlay 0.6s ease forwards;
@@ -577,5 +697,154 @@ body {
     100% {
         transform: translateY(-200px) scale(0.8);
         opacity: 0;
+    }
+}
+
+/* Phase 4: 강화된 애니메이션 효과 */
+
+/* 카드 등장 애니메이션 */
+.card-draw-animation {
+    animation: cardDraw 0.5s ease-out;
+}
+
+@keyframes cardDraw {
+    0% {
+        transform: translateY(100px) rotateX(-90deg);
+        opacity: 0;
+    }
+    60% {
+        transform: translateY(-10px) rotateX(0deg);
+    }
+    100% {
+        transform: translateY(0) rotateX(0deg);
+        opacity: 1;
+    }
+}
+
+/* 타겟 버튼 펄스 효과 */
+.target-btn.pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+    }
+}
+
+/* 상대방 카드 업데이트 효과 */
+.opponent-card.highlight {
+    animation: highlight 0.8s ease;
+}
+
+@keyframes highlight {
+    0%, 100% {
+        background: rgba(255, 255, 255, 0.9);
+        transform: scale(1);
+    }
+    50% {
+        background: rgba(255, 235, 59, 0.3);
+        transform: scale(1.05);
+    }
+}
+
+/* 게임 로그 강조 효과 */
+.log-entry.important {
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.2) 0%, transparent 100%);
+    border-left: 3px solid #FFC107;
+    padding-left: 12px;
+    font-weight: 600;
+}
+
+/* 승리 애니메이션 */
+.winner-announce {
+    animation: winnerBounce 0.8s ease-out;
+}
+
+@keyframes winnerBounce {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.1);
+    }
+    80% {
+        transform: scale(0.95);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* CPU 턴 표시 애니메이션 */
+.turn-info.cpu-turn {
+    animation: cpuTurn 1.5s ease-in-out infinite;
+}
+
+@keyframes cpuTurn {
+    0%, 100% {
+        color: #2a5298;
+    }
+    50% {
+        color: #667eea;
+    }
+}
+
+/* 보호 효과 강조 */
+.opponent-card.protected {
+    animation: protectedGlow 2s ease-in-out infinite;
+}
+
+@keyframes protectedGlow {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    }
+}
+
+/* 탈락 효과 */
+.opponent-card.eliminated {
+    animation: fadeOut 0.5s ease forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+}
+
+/* 버튼 클릭 효과 */
+.target-btn:active,
+.guess-btn:active,
+.cancel-btn:active,
+.next-round-btn:active {
+    transform: scale(0.95);
+}
+
+/* 강제 카드 강조 */
+.my-card.forced {
+    animation: forcedBlink 1s ease-in-out infinite;
+}
+
+@keyframes forcedBlink {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(255, 87, 34, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 87, 34, 0.9);
     }
 }

@@ -27,6 +27,55 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// 유틸리티: 에러 처리
+function handleError(error, context, retryFn = null) {
+    console.error(`${context} 오류:`, error);
+
+    const errorMessages = {
+        'Failed to fetch': '네트워크 연결을 확인해주세요.',
+        'NetworkError': '네트워크 연결이 불안정합니다.',
+        'TimeoutError': '요청 시간이 초과되었습니다.',
+    };
+
+    let message = errorMessages[error.name] || error.message || '알 수 없는 오류가 발생했습니다.';
+
+    if (retryFn) {
+        const retry = confirm(`${context} 중 오류가 발생했습니다.\n${message}\n\n다시 시도하시겠습니까?`);
+        if (retry) {
+            return retryFn();
+        }
+    } else {
+        alert(`${context} 중 오류가 발생했습니다.\n${message}`);
+    }
+
+    return null;
+}
+
+// 유틸리티: 네트워크 요청 (재시도 포함)
+async function fetchWithRetry(url, options = {}, retries = 2) {
+    for (let i = 0; i <= retries; i++) {
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: AbortSignal.timeout(10000) // 10초 타임아웃
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return response;
+        } catch (error) {
+            if (i === retries) {
+                throw error;
+            }
+
+            // 재시도 전 대기
+            await delay(1000 * (i + 1));
+        }
+    }
+}
+
 // 게임 초기화
 async function initializeGame(gameId) {
     gameState.gameId = gameId;
@@ -65,10 +114,12 @@ function updateGameUI(state) {
     if (currentPlayer.id === gameState.myPlayerId) {
         turnInfo.textContent = '당신의 턴';
         turnInfo.style.color = '#4CAF50';
+        turnInfo.classList.remove('cpu-turn');
         gameState.isMyTurn = true;
     } else {
         turnInfo.textContent = `${currentPlayer.name}의 턴`;
         turnInfo.style.color = '#2a5298';
+        turnInfo.classList.add('cpu-turn');
         gameState.isMyTurn = false;
     }
 
@@ -213,7 +264,7 @@ function displayMyCards(playableCards, drawnCard) {
 
     playableCards.forEach((card, index) => {
         const cardEl = document.createElement('div');
-        cardEl.className = `my-card ${index === 0 ? 'front' : 'back'}`;
+        cardEl.className = `my-card ${index === 0 ? 'front' : 'back'} card-draw-animation`;
         cardEl.dataset.index = index;
         cardEl.dataset.cardId = card.id;
 
@@ -223,6 +274,11 @@ function displayMyCards(playableCards, drawnCard) {
         cardEl.appendChild(img);
 
         cardStack.appendChild(cardEl);
+
+        // 애니메이션 종료 후 클래스 제거
+        setTimeout(() => {
+            cardEl.classList.remove('card-draw-animation');
+        }, 500);
     });
 
     // 터치 이벤트 초기화
@@ -635,10 +691,17 @@ async function startNextRound() {
 }
 
 // 게임 로그 추가
-function addGameLog(message) {
+function addGameLog(message, important = false) {
     const gameLog = document.getElementById('gameLog');
     const logEntry = document.createElement('div');
     logEntry.className = 'log-entry';
+
+    // 중요한 메시지는 강조
+    const importantKeywords = ['시작', '종료', '승리', '탈락', '사용했습니다', '턴입니다'];
+    if (important || importantKeywords.some(keyword => message.includes(keyword))) {
+        logEntry.classList.add('important');
+    }
+
     logEntry.textContent = message;
 
     gameLog.insertBefore(logEntry, gameLog.firstChild);
