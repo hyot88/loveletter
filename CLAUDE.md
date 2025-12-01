@@ -103,20 +103,24 @@ UI layout from top to bottom:
 
 ## REST API Endpoints
 
-Expected endpoints for game flow:
-- `POST /game/start?cpuCount={1-3}` - Initialize new game
+Implemented endpoints for game flow:
+- `POST /game/start?cpuCount={1-3}` - Initialize new game, returns GameState with gameId
 - `POST /game/{gameId}/draw` - Draw card at turn start
-- `POST /game/{gameId}/play` - Play card with optional target/guess
-- `GET /game/{gameId}/cpu-turn?cpuPlayerId={id}` - Get CPU decision
-- `POST /game/{gameId}/cpu-turn` - Execute CPU action
+- `POST /game/{gameId}/play` - Play card with optional target/guess parameters
+  - Request body: `{cardType, targetPlayerId?, guessCardType?}`
+- `GET /game/{gameId}/cpu-turn?cpuPlayerId={id}` - Get CPU's next action decision
+- `POST /game/{gameId}/cpu-turn` - Execute CPU action with body from GET decision
 - `GET /game/{gameId}/state` - Get current game state
+- `POST /game/{gameId}/next-round` - Start next round after current round ends
+- `GET /` - Menu page (MenuController)
+- `GET /game?gameId={id}` - Game page (MenuController)
 
 ## Development Phases
 
 - ✅ **Phase 1 (Completed)**: Core game logic - Card system, game flow, and all card effects
 - ✅ **Phase 2 (Completed)**: AI implementation - Smart CPU decision-making, Guard guessing logic, card evaluation strategy
-- **Phase 3 (Ready to Start)**: UI/UX - Mobile-first web interface with Thymeleaf, gesture controls, animations
-- **Phase 4**: Polish - Responsive design, enhanced animations, user experience improvements
+- ✅ **Phase 3 (Completed)**: UI/UX - Mobile-first web interface with Thymeleaf, gesture controls, touch interactions, game flow UI
+- **Phase 4 (Ready to Start)**: Polish - Enhanced animations, user experience improvements, visual effects
 - **Phase 5**: Online Multiplayer - WebSocket implementation, matchmaking, real-time gameplay
 
 ## Testing Focus Areas
@@ -131,10 +135,37 @@ Essential test scenarios:
 - Secret card reveal at round end
 - Multi-round game scoring
 
+## Frontend Implementation Details
+
+**File Locations**:
+- Templates: `src/main/resources/templates/` (menu.html, game.html)
+- CSS: `src/main/resources/static/css/game.css`
+- JavaScript: `src/main/resources/static/js/game.js`
+- Card images: `src/main/resources/static/image/` (1.png through 8.png, plus back.png)
+
+**Touch Interaction Implementation**:
+- Card swipe threshold: 50px horizontal for switching, 100px vertical for playing
+- Prevent default touch behaviors with `touch-action: none` on card elements
+- Use `touchstart`, `touchmove`, `touchend` events for gesture detection
+
+**Game State Management (JavaScript)**:
+The frontend maintains a `gameState` object tracking:
+- `gameId`, `currentPlayerId`, `isMyTurn`
+- `selectedCardIndex` (0 or 1 for which card is front)
+- `playedCardType`, `targetPlayerId`, `guessCardType` for action tracking
+
+**Async Turn Cycle**:
+The `startTurnCycle()` function loops through players:
+1. Check if round is over
+2. If my turn: enable cards, wait for user action
+3. If CPU turn: call `handleCPUTurn()` with 2-second delays between steps
+4. Refresh game state and continue cycle
+
 ## Important Notes
 
-- Game state should be managed in-memory (session/cache) for Phase 1
-- Card images are in `src/main/resources/static/image/` (1.png through 8.png, plus back.png)
+- Game state is managed in-memory using HashMap in GameService
+- Each game gets a unique UUID as gameId
+- GameState.PlayerInfo has `showHandCard` logic - shows card to owner or if using Priest
 - Project uses Korean language for UI strings and logs
 - Initial implementation targets 2-4 player games (1 human + 1-3 CPUs)
 - Avoid over-engineering - implement only requested features, no premature abstractions

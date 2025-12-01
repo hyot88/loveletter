@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>러브레터 - Love Letter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .menu-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #764ba2;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 40px;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .menu-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            touch-action: manipulation;
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .menu-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+        }
+
+        .menu-btn .player-count {
+            display: block;
+            font-size: 0.8em;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #764ba2;
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .menu-btn {
+                font-size: 1.1em;
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <h1>러브레터</h1>
+        <p class="subtitle">Love Letter - Kanai Factory Edition</p>
+
+        <div class="menu-buttons">
+            <button class="menu-btn" onclick="startGame(1)">
+                vs 1 CPU
+                <span class="player-count">2인 게임</span>
+            </button>
+
+            <button class="menu-btn" onclick="startGame(2)">
+                vs 2 CPU
+                <span class="player-count">3인 게임</span>
+            </button>
+
+            <button class="menu-btn" onclick="startGame(3)">
+                vs 3 CPU
+                <span class="player-count">4인 게임</span>
+            </button>
+        </div>
+
+        <div class="loading" id="loading">게임을 시작하는 중...</div>
+    </div>
+
+    <script>
+        async function startGame(cpuCount) {
+            const loading = document.getElementById('loading');
+            const buttons = document.querySelectorAll('.menu-btn');
+
+            // UI 비활성화
+            buttons.forEach(btn => btn.disabled = true);
+            loading.classList.add('show');
+
+            try {
+                // 게임 생성 API 호출
+                const response = await fetch(`/game/start?cpuCount=${cpuCount}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error('게임 시작 실패');
+                }
+
+                const gameState = await response.json();
+
+                // 게임 화면으로 이동
+                window.location.href = `/game?gameId=${gameState.gameId}`;
+
+            } catch (error) {
+                console.error('게임 시작 오류:', error);
+                alert('게임을 시작할 수 없습니다. 다시 시도해주세요.');
+
+                // UI 재활성화
+                buttons.forEach(btn => btn.disabled = false);
+                loading.classList.remove('show');
+            }
+        }
+    </script>
+</body>
+</html>

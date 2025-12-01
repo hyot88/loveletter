@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>러브레터 - 게임 플레이</title>
+    <link rel="stylesheet" href="/css/game.css">
+</head>
+<body>
+    <!-- 상단 헤더 -->
+    <header class="game-header">
+        <div class="turn-info" id="turnInfo">당신의 턴</div>
+        <div class="score-board" id="scoreBoard">
+            <div class="score-item">
+                <span class="player-name">You</span>
+                <span class="score" id="yourScore">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 게임 로그 영역 -->
+    <div class="game-log" id="gameLog">
+        <div class="log-entry">게임이 시작되었습니다!</div>
+    </div>
+
+    <!-- 중앙 카드 영역 -->
+    <div class="central-area">
+        <div class="last-played-card" id="lastPlayedCard">
+            <div class="card-placeholder">사용된 카드가 여기에 표시됩니다</div>
+        </div>
+
+        <!-- 상대 플레이어 정보 -->
+        <div class="opponents-info" id="opponentsInfo">
+            <!-- JavaScript로 동적 생성 -->
+        </div>
+    </div>
+
+    <!-- 내 카드 영역 -->
+    <div class="my-cards-container">
+        <div class="my-cards" id="myCards">
+            <div class="card-stack">
+                <!-- JavaScript로 동적 생성 -->
+            </div>
+        </div>
+
+        <div class="action-hint" id="actionHint">
+            <span class="hint-text">카드를 좌우로 스와이프하여 선택하고, 위로 슬라이드하여 사용하세요</span>
+        </div>
+    </div>
+
+    <!-- 타겟 선택 UI (숨김 상태로 시작) -->
+    <div class="target-selection-overlay" id="targetOverlay">
+        <div class="target-selection-panel">
+            <h3>대상 선택</h3>
+            <div class="target-list" id="targetList">
+                <!-- JavaScript로 동적 생성 -->
+            </div>
+            <button class="cancel-btn" onclick="cancelTargetSelection()">취소</button>
+        </div>
+    </div>
+
+    <!-- 경비병 추측 UI (숨김 상태로 시작) -->
+    <div class="guess-overlay" id="guessOverlay">
+        <div class="guess-panel">
+            <h3>카드 번호 추측</h3>
+            <p class="guess-hint">상대방이 가진 카드 번호를 추측하세요 (2-8)</p>
+            <div class="guess-buttons" id="guessButtons">
+                <button class="guess-btn" onclick="selectGuess(2)">2 - 광대</button>
+                <button class="guess-btn" onclick="selectGuess(3)">3 - 기사</button>
+                <button class="guess-btn" onclick="selectGuess(4)">4 - 사제</button>
+                <button class="guess-btn" onclick="selectGuess(5)">5 - 마법사</button>
+                <button class="guess-btn" onclick="selectGuess(6)">6 - 장군</button>
+                <button class="guess-btn" onclick="selectGuess(7)">7 - 후작</button>
+                <button class="guess-btn" onclick="selectGuess(8)">8 - 공주</button>
+            </div>
+            <button class="cancel-btn" onclick="cancelGuess()">취소</button>
+        </div>
+    </div>
+
+    <!-- 라운드 종료 모달 -->
+    <div class="round-over-overlay" id="roundOverOverlay">
+        <div class="round-over-panel">
+            <h2>라운드 종료!</h2>
+            <div class="final-cards" id="finalCards">
+                <!-- JavaScript로 동적 생성 -->
+            </div>
+            <div class="winner-announce" id="winnerAnnounce">
+                <!-- JavaScript로 동적 생성 -->
+            </div>
+            <button class="next-round-btn" onclick="startNextRound()">다음 라운드</button>
+        </div>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p class="loading-text" id="loadingText">로딩 중...</p>
+    </div>
+
+    <script src="/js/game.js"></script>
+    <script>
+        // 페이지 로드 시 게임 초기화
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const gameId = urlParams.get('gameId');
+
+            if (gameId) {
+                initializeGame(gameId);
+            } else {
+                alert('게임 ID가 없습니다. 메뉴로 돌아갑니다.');
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>
