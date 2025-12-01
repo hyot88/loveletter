@@ -670,9 +670,9 @@ src/main/resources/static/image/
 ```
 
 ## 향후 개발 계획
-1. **Phase 1**: vs CPU 모드 완성 ← **현재 목표**
-2. **Phase 2**: UI/UX 개선 및 애니메이션
-3. **Phase 3**: vs User 온라인 멀티플레이
+1. **Phase 1**: vs CPU 모드 완성 ← **완료**
+2. **Phase 2**: UI/UX 개선 및 애니메이션 ← **완료**
+3. **Phase 3**: vs User 온라인 멀티플레이 ← **현재 목표**
 4. **Phase 4**: 랭킹 시스템 및 통계
 5. **Phase 5**: 다양한 에디션 지원
 
