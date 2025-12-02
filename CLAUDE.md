@@ -22,6 +22,12 @@ Love Letter (러브레터) - Web-based implementation of the Love Letter card ga
 
 # Clean build
 ./gradlew clean build
+
+# Run specific test class
+./gradlew test --tests ClassName
+
+# Run single test method
+./gradlew test --tests ClassName.methodName
 ```
 
 Access the application at `http://localhost:8080` after starting.
@@ -60,7 +66,7 @@ The game uses 16 cards total with specific distributions:
 
 **Handmaid (4) Protection**: Protected players cannot be targeted by any card effects until their next turn begins. Track `isProtected` flag on Player.
 
-## Expected Package Structure
+## Package Structure
 
 ```
 com.simiyami.loveletter/
@@ -73,11 +79,14 @@ com.simiyami.loveletter/
 │   └── CardService.java         # Card effect implementations
 ├── model/
 │   ├── Card.java                # Card entity
-│   ├── Player.java              # Player state (hand, discards, alive, protected)
+│   ├── Player.java              # Player state (hand, discards, alive, protected, CPU memory)
 │   ├── Game.java                # Game session
-│   └── GameState.java           # Full game state snapshot
+│   └── GameState.java           # Full game state snapshot with PlayerInfo
+├── dto/
+│   ├── CardPlayRequest.java     # Request DTO for playing cards
+│   └── CPUAction.java           # CPU action decision result
 └── enums/
-    ├── CardType.java            # Enum for cards 1-8
+    ├── CardType.java            # Enum for cards 1-8 with card counts
     └── PlayerType.java          # HUMAN vs CPU
 ```
 
@@ -155,21 +164,28 @@ Essential test scenarios:
 
 **Touch Interaction Implementation**:
 - Card swipe threshold: 50px horizontal for switching, 100px vertical for playing
-- Prevent default touch behaviors with `touch-action: none` on card elements
+- Movement direction is determined on first move (horizontal vs vertical) to prevent conflicts
 - Use `touchstart`, `touchmove`, `touchend` events for gesture detection
+- Unified touch handler prevents duplicate event listeners by cloning and replacing the element
+- Vertical swipe applies `transform: translateY()` for visual feedback during drag
 
 **Game State Management (JavaScript)**:
 The frontend maintains a `gameState` object tracking:
-- `gameId`, `currentPlayerId`, `isMyTurn`
-- `selectedCardIndex` (0 or 1 for which card is front)
-- `playedCardType`, `targetPlayerId`, `guessCardType` for action tracking
+- `gameId`, `myPlayerId`, `isMyTurn`
+- `myCards`, `selectedCardIndex` (0 or 1 for which card is front)
+- `pendingCard`, `pendingTarget` for multi-step card actions
+- `discardPile` array for tracking all discarded cards in current round
+- `actionResolve` promise resolver for synchronizing player actions with turn cycle
 
 **Async Turn Cycle**:
 The `startTurnCycle()` function loops through players:
-1. Check if round is over
-2. If my turn: enable cards, wait for user action
-3. If CPU turn: call `handleCPUTurn()` with 2-second delays between steps
-4. Refresh game state and continue cycle
+1. Fetch game state and check if round is over
+2. If my turn: call `handleMyTurn()` which draws card, displays cards, then waits for `actionResolve` promise
+3. If CPU turn: call `handleCPUTurn()` with 2-second delays between steps (draw, think, play)
+4. After each turn completes, add 500ms delay before next turn
+5. When round ends, call `handleRoundOver()` which breaks the loop
+
+**Critical**: Use the promise-based `waitForPlayerAction()` pattern to avoid duplicate turn cycle calls. The `executeCardPlay()` function resolves the promise when the player action is complete.
 
 ## Important Notes
 
@@ -179,6 +195,8 @@ The `startTurnCycle()` function loops through players:
 - Project uses Korean language for UI strings and logs
 - Initial implementation targets 2-4 player games (1 human + 1-3 CPUs)
 - Avoid over-engineering - implement only requested features, no premature abstractions
+- Frontend implements error handling with retry logic (`fetchWithRetry`) and user-friendly error messages
+- Network requests have 10-second timeout with automatic retry (up to 2 retries)
 
 ## Common Pitfalls and Debugging
 
@@ -197,5 +215,13 @@ The `startTurnCycle()` function loops through players:
 - After playing a card: `updateGameUI()` automatically displays remaining card from server state
 - The `updateGameUI()` function checks `myPlayer.handCard` and calls `displayRemainingCard()` when `!state.roundOver`
 - Never manually clear card display with `innerHTML = ''` - rely on `updateGameUI()` for proper state synchronization
+- `displayRemainingCard()` checks if multiple cards are already displayed (length > 1) to avoid overwriting during player's turn
+
+**Card Swipe Artifact Fix**: To prevent ghost images when swiping up to play a card:
+1. Reset `transform` to empty string before applying animation
+2. Add 50ms delay after reset to ensure CSS updates
+3. Apply `card-play-animation` class after the delay
+
+**Discard Pile Display**: The frontend displays up to 5 most recent cards stacked with offset positioning (3px offset per card, increasing z-index). Click on the discard pile opens a modal showing all discarded cards in a grid layout.
 
 **Test Updates**: When modifying core game flow (like adding `drawnCard`), existing tests may fail. Update tests to work WITH the new logic rather than AROUND it - remove manual card management and let GameService handle it naturally.

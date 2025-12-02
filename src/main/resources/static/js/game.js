@@ -7,7 +7,8 @@ let gameState = {
     isMyTurn: false,
     currentAction: null,
     pendingCard: null,
-    pendingTarget: null
+    pendingTarget: null,
+    discardPile: [] // 버린 카드 더미
 };
 
 // 카드 이름 매핑
@@ -149,6 +150,14 @@ function updateScoreBoard(players) {
     players.forEach(player => {
         const scoreItem = document.createElement('div');
         scoreItem.className = 'score-item';
+
+        // 생존 여부에 따라 테두리 색상 변경
+        if (player.alive) {
+            scoreItem.classList.add('alive');
+        } else {
+            scoreItem.classList.add('eliminated');
+        }
+
         scoreItem.innerHTML = `
             <span class="player-name">${player.name}</span>
             <span class="score" id="score-${player.id}">${player.roundsWon}</span>
@@ -426,6 +435,9 @@ async function playCard(card) {
     // 카드 애니메이션
     const frontCard = document.querySelector('.my-card.front');
     if (frontCard) {
+        // 잔상 방지: transform 초기화 후 애니메이션 적용
+        frontCard.style.transform = '';
+        await delay(50); // 약간의 딜레이로 초기화 확실히 적용
         frontCard.classList.add('card-play-animation');
     }
 
@@ -646,15 +658,83 @@ async function handleCPUTurn(cpuPlayer) {
     }
 }
 
-// 중앙 카드 표시
+// 중앙 카드 표시 (카드 더미로 겹쳐서 보여주기)
 function showCentralCard(card) {
     const lastPlayedCard = document.getElementById('lastPlayedCard');
-    lastPlayedCard.innerHTML = `<img src="/image/${card.number}.png" alt="${card.name}">`;
-    lastPlayedCard.classList.add('show');
 
+    // 버린 카드 더미에 추가
+    gameState.discardPile.push(card);
+
+    // 최대 5장까지만 표시 (성능 최적화)
+    const cardsToShow = gameState.discardPile.slice(-5);
+
+    // 카드 더미 재렌더링
+    lastPlayedCard.innerHTML = '';
+
+    cardsToShow.forEach((discardedCard, index) => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'discard-card';
+
+        // 카드 겹치기: 각 카드를 살짝씩 offset
+        const offset = index * 3; // 3px씩 offset
+        cardEl.style.left = `${offset}px`;
+        cardEl.style.top = `${offset}px`;
+        cardEl.style.zIndex = index;
+
+        // 최신 카드만 애니메이션
+        if (index === cardsToShow.length - 1) {
+            cardEl.classList.add('show');
+        }
+
+        const img = document.createElement('img');
+        img.src = `/image/${discardedCard.number}.png`;
+        img.alt = discardedCard.name;
+        cardEl.appendChild(img);
+
+        lastPlayedCard.appendChild(cardEl);
+    });
+
+    // 애니메이션 클래스 제거
     setTimeout(() => {
-        lastPlayedCard.classList.remove('show');
+        const cards = lastPlayedCard.querySelectorAll('.discard-card');
+        cards.forEach(c => c.classList.remove('show'));
     }, 600);
+
+    // 클릭 이벤트 추가 - 버린 카드 리스트 모달 표시
+    lastPlayedCard.onclick = showDiscardList;
+}
+
+// 버린 카드 리스트 모달 표시
+function showDiscardList() {
+    if (gameState.discardPile.length === 0) {
+        return; // 버린 카드가 없으면 모달 표시 안 함
+    }
+
+    const overlay = document.getElementById('discardListOverlay');
+    const content = document.getElementById('discardListContent');
+
+    // 버린 카드 리스트 렌더링
+    content.innerHTML = '';
+
+    gameState.discardPile.forEach((card, index) => {
+        const item = document.createElement('div');
+        item.className = 'discard-card-item';
+
+        item.innerHTML = `
+            <img src="/image/${card.number}.png" alt="${card.name}">
+            <div class="card-name">${card.name}</div>
+        `;
+
+        content.appendChild(item);
+    });
+
+    overlay.classList.add('show');
+}
+
+// 버린 카드 리스트 모달 닫기
+function closeDiscardList() {
+    const overlay = document.getElementById('discardListOverlay');
+    overlay.classList.remove('show');
 }
 
 // 라운드 종료 처리
@@ -701,6 +781,10 @@ async function startNextRound() {
     const lastPlayedCard = document.getElementById('lastPlayedCard');
     lastPlayedCard.innerHTML = '';
     lastPlayedCard.classList.remove('show');
+    lastPlayedCard.onclick = null; // 클릭 이벤트 제거
+
+    // 버린 카드 더미 초기화
+    gameState.discardPile = [];
 
     showLoading('다음 라운드를 준비하는 중...');
 
