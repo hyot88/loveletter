@@ -79,12 +79,23 @@ public class GameController {
             }
 
             // 플레이어가 가진 카드 찾기 (손패 or 뽑은 카드)
-            Card cardToPlay = player.getHandCard();
-            if (cardToPlay == null || !cardToPlay.getId().equals(request.getCardId())) {
+            Card cardToPlay = null;
+            if (player.getHandCard() != null && player.getHandCard().getId().equals(request.getCardId())) {
+                cardToPlay = player.getHandCard();
+            } else if (player.getDrawnCard() != null && player.getDrawnCard().getId().equals(request.getCardId())) {
+                cardToPlay = player.getDrawnCard();
+            }
+
+            if (cardToPlay == null) {
                 return ResponseEntity.badRequest().build();
             }
 
             gameService.playCard(game, player, cardToPlay, target, request.getGuessNumber());
+
+            // 라운드가 종료되지 않았으면 다음 턴으로
+            if (!game.isRoundOver()) {
+                gameService.nextTurn(game);
+            }
 
             GameState state = GameState.fromGame(game, request.getPlayerId());
             return ResponseEntity.ok(state);

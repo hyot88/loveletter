@@ -178,15 +178,6 @@ class AIServiceTest {
                 action = aiService.decideCPUAction(game, currentPlayer, drawnCard);
                 cardToPlay = action.getCardToPlay();
 
-                // 손에 남길 카드 결정
-                if (currentPlayer.getHandCard().getId().equals(cardToPlay.getId())) {
-                    cardToKeep = drawnCard;
-                } else {
-                    cardToKeep = currentPlayer.getHandCard();
-                }
-
-                currentPlayer.setHandCard(cardToKeep);
-
                 if (action.getTargetId() != null) {
                     target = game.getPlayer(action.getTargetId());
                 }
@@ -196,10 +187,6 @@ class AIServiceTest {
             } else {
                 // Human 턴 (간단한 로직)
                 cardToPlay = gameService.getPlayableCards(currentPlayer, drawnCard).get(0);
-                cardToKeep = (currentPlayer.getHandCard().getId().equals(cardToPlay.getId()))
-                    ? drawnCard : currentPlayer.getHandCard();
-
-                currentPlayer.setHandCard(cardToKeep);
 
                 if (cardToPlay.getType().requiresTarget() && !cardToPlay.getType().canTargetSelf()) {
                     var targetablePlayers = game.getTargetablePlayers(currentPlayer);

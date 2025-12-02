@@ -11,6 +11,7 @@ public class Player {
     private final String name;
     private final PlayerType type;
     private Card handCard;
+    private Card drawnCard;  // 턴에 드로우한 카드
     private final List<Card> discardedCards;
     private boolean isAlive;
     private boolean isProtected;
@@ -44,6 +45,14 @@ public class Player {
 
     public void setHandCard(Card card) {
         this.handCard = card;
+    }
+
+    public Card getDrawnCard() {
+        return drawnCard;
+    }
+
+    public void setDrawnCard(Card card) {
+        this.drawnCard = card;
     }
 
     public List<Card> getDiscardedCards() {
@@ -82,11 +91,15 @@ public class Player {
         return handCard != null && handCard.getType() == cardType;
     }
 
+    public boolean hasDrawnCard(CardType cardType) {
+        return drawnCard != null && drawnCard.getType() == cardType;
+    }
+
     public boolean mustPlayCountess() {
-        if (!hasCard(CardType.COUNTESS)) {
-            return false;
-        }
-        return hasCard(CardType.PRINCE) || hasCard(CardType.KING);
+        boolean hasCountess = hasCard(CardType.COUNTESS) || hasDrawnCard(CardType.COUNTESS);
+        boolean hasPrinceOrKing = hasCard(CardType.PRINCE) || hasDrawnCard(CardType.PRINCE) ||
+                                   hasCard(CardType.KING) || hasDrawnCard(CardType.KING);
+        return hasCountess && hasPrinceOrKing;
     }
 
     public void eliminate() {
@@ -96,6 +109,7 @@ public class Player {
 
     public void resetForNewRound() {
         this.handCard = null;
+        this.drawnCard = null;
         this.discardedCards.clear();
         this.isAlive = true;
         this.isProtected = false;

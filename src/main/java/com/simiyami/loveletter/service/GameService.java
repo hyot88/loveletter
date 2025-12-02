@@ -79,6 +79,8 @@ public class GameService {
             return null;
         }
 
+        // 플레이어의 drawnCard에 저장
+        player.setDrawnCard(drawnCard);
         game.addLog(String.format("%s가 카드를 뽑았습니다.", player.getName()));
         return drawnCard;
     }
@@ -88,9 +90,26 @@ public class GameService {
             throw new IllegalStateException(player.getName() + "은(는) 이미 탈락했습니다.");
         }
 
-        if (player.getHandCard() == null) {
+        if (player.getHandCard() == null && player.getDrawnCard() == null) {
             throw new IllegalStateException(player.getName() + "의 손에 카드가 없습니다.");
         }
+
+        // 사용할 카드가 손패인지 드로우 카드인지 확인
+        Card remainingCard;
+        if (player.getHandCard() != null && player.getHandCard().getId().equals(cardToPlay.getId())) {
+            // 손패를 사용
+            remainingCard = player.getDrawnCard();
+            player.setHandCard(remainingCard);
+        } else if (player.getDrawnCard() != null && player.getDrawnCard().getId().equals(cardToPlay.getId())) {
+            // 드로우 카드를 사용
+            remainingCard = player.getHandCard();
+            // 손패는 그대로 유지
+        } else {
+            throw new IllegalStateException("해당 카드를 가지고 있지 않습니다.");
+        }
+
+        // 드로우 카드 초기화
+        player.setDrawnCard(null);
 
         game.addToDiscardPile(cardToPlay);
         player.addDiscardedCard(cardToPlay);
@@ -191,14 +210,15 @@ public class GameService {
 
     public List<Card> getPlayableCards(Player player, Card drawnCard) {
         List<Card> cards = new ArrayList<>();
-        cards.add(player.getHandCard());
-        cards.add(drawnCard);
+        if (player.getHandCard() != null) {
+            cards.add(player.getHandCard());
+        }
+        if (drawnCard != null) {
+            cards.add(drawnCard);
+        }
 
-        boolean hasCountess = cards.stream().anyMatch(c -> c.getType() == CardType.COUNTESS);
-        boolean hasPrinceOrKing = cards.stream().anyMatch(c ->
-            c.getType() == CardType.PRINCE || c.getType() == CardType.KING);
-
-        if (hasCountess && hasPrinceOrKing) {
+        // Countess 강제 플레이 체크
+        if (player.mustPlayCountess()) {
             return cards.stream()
                 .filter(c -> c.getType() == CardType.COUNTESS)
                 .toList();

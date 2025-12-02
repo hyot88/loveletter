@@ -188,7 +188,7 @@ function updateOpponentsInfo(players) {
 
 // 턴 사이클 시작
 async function startTurnCycle() {
-    while (!gameState.roundOver) {
+    while (true) {
         const state = await fetchGameState();
 
         if (state.roundOver) {
@@ -206,8 +206,8 @@ async function startTurnCycle() {
             await handleCPUTurn(currentPlayer);
         }
 
-        // 다음 턴으로 진행
-        await delay(1000);
+        // 다음 턴을 위한 짧은 딜레이
+        await delay(500);
     }
 }
 
@@ -536,16 +536,23 @@ async function executeCardPlay(card, targetId, guessNumber) {
 
         updateGameUI(state);
 
-        // 다음 턴으로
-        if (!state.roundOver) {
-            await delay(1000);
-            startTurnCycle();
+        // 내 카드 영역 초기화
+        const cardStack = document.querySelector('.card-stack');
+        if (cardStack) {
+            cardStack.innerHTML = '';
+        }
+
+        // actionResolve 호출하여 waitForPlayerAction 해제
+        if (gameState.actionResolve) {
+            gameState.actionResolve();
+            gameState.actionResolve = null;
         }
 
     } catch (error) {
         console.error('카드 사용 오류:', error);
         hideLoading();
         alert('카드를 사용할 수 없습니다.');
+        gameState.isMyTurn = true;  // 재시도를 위해 다시 활성화
     }
 }
 

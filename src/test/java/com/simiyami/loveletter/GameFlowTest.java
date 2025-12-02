@@ -73,12 +73,6 @@ class GameFlowTest {
             System.out.println("플레이 가능한 카드: " + playableCards);
 
             Card cardToPlay = playableCards.get(0);
-            Card cardToKeep = playableCards.stream()
-                .filter(c -> !c.equals(cardToPlay))
-                .findFirst()
-                .orElse(null);
-
-            currentPlayer.setHandCard(cardToKeep);
 
             Player target = null;
             Integer guessNumber = null;
@@ -130,6 +124,7 @@ class GameFlowTest {
 
         player.setHandCard(new Card(CardType.COUNTESS, "test-countess"));
         Card princeCard = new Card(CardType.PRINCE, "test-prince");
+        player.setDrawnCard(princeCard);
 
         assertTrue(player.hasCard(CardType.COUNTESS), "플레이어가 후작을 가져야 합니다.");
 

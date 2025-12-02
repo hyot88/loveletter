@@ -40,11 +40,17 @@ The game uses 16 cards total with specific distributions:
 - **8 (Princess)**: 1 card - Instant loss if discarded
 
 ### Core Game Flow
-1. Game starts with 1 secret card removed from deck
-2. Each player draws 1 card initially
-3. On turn: draw 1 card (total 2), play 1 card
-4. Round ends when deck empty or only 1 player alive
-5. Winner is last player alive or highest card holder
+1. Game starts with 1 secret card removed from deck (16 total → 15 playable)
+2. Each player draws 1 card initially (stored in `handCard`)
+3. On turn: draw 1 card into `drawnCard` (total 2), play 1 card, keep 1 card
+4. After playing a card, the remaining card becomes the new `handCard`
+5. Round ends when deck empty or only 1 player alive
+6. Winner is last player alive or highest card holder
+
+**Critical Implementation Detail**: Player model uses TWO fields for the 2-card system:
+- `handCard`: Persistent card from previous turn
+- `drawnCard`: Temporary card drawn at turn start
+- When a card is played, the remaining card becomes the new `handCard` and `drawnCard` is set to null
 
 ### Critical Game Rules to Implement
 
@@ -169,3 +175,16 @@ The `startTurnCycle()` function loops through players:
 - Project uses Korean language for UI strings and logs
 - Initial implementation targets 2-4 player games (1 human + 1-3 CPUs)
 - Avoid over-engineering - implement only requested features, no premature abstractions
+
+## Common Pitfalls and Debugging
+
+**Two-Card System**: The most common mistake is forgetting that Player has both `handCard` and `drawnCard` fields. When implementing card logic:
+- `getPlayableCards()` must check BOTH fields for Countess forced play detection
+- `playCard()` must determine which card was played and properly manage the remaining card
+- Tests should NOT manually set `handCard` after playing - let the game logic handle it
+
+**Turn Advancement**: GameController must call `gameService.nextTurn()` after `playCard()` completes (unless round is over). Without this, the game will get stuck on the same player.
+
+**Frontend Turn Cycle**: Avoid duplicate `startTurnCycle()` calls. Use Promise resolution pattern (`actionResolve`) to signal when player action completes, rather than recursively calling `startTurnCycle()` from within action handlers.
+
+**Test Updates**: When modifying core game flow (like adding `drawnCard`), existing tests may fail. Update tests to work WITH the new logic rather than AROUND it - remove manual card management and let GameService handle it naturally.
