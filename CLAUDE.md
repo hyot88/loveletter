@@ -99,7 +99,7 @@ com.simiyami.loveletter/
 - **Priest (2)**: Automatically remembers viewed cards for future decision-making
 - **Baron (3)**: Only plays against opponents with known lower cards, otherwise uses discard pile analysis
 - **Handmaid (4)**: Uses when multiple opponents exist and protection is valuable
-- **Prince (5)**: Targets known PRINCESS holders for elimination, otherwise targets players with few discards (likely high cards)
+- **Prince (5)**: Can target self or opponents. Targets known PRINCESS holders for elimination, otherwise targets players with few discards (likely high cards). May target self to discard low-value cards.
 - **King (6)**: Exchanges PRINCESS to opponents (for later GUARD elimination), or acquires known high-value cards
 - **Countess (7)**: Mandatory play enforced when holding PRINCE or KING (score: 2, low priority)
 - **Princess (8)**: Never plays (score: -100)
@@ -109,15 +109,15 @@ com.simiyami.loveletter/
 ## Mobile-First UI/UX Design
 
 The frontend uses touch-based gestures optimized for mobile:
-- **Horizontal swipe**: Switch between 2 cards in hand (cards displayed overlapped)
+- **Horizontal swipe**: Switch between 2 cards in hand (cards displayed with visible overlap)
 - **Vertical swipe up**: Play the front card
 - **Tap**: Select target player when required
 
 UI layout from top to bottom:
 1. Turn indicator and score header
-2. Game log (recent 3-5 actions)
+2. Game log (recent 10 actions maximum)
 3. Central card area (last played card)
-4. Player's hand (2 overlapping cards, swipe to switch)
+4. Player's hand (2 cards with 50px offset, both visible without swiping)
 5. Target selection panel (appears when needed)
 
 ## REST API Endpoints

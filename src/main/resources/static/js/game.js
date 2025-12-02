@@ -127,9 +127,6 @@ function updateGameUI(state) {
     // 스코어 보드 업데이트
     updateScoreBoard(state.players);
 
-    // 상대 플레이어 정보 업데이트
-    updateOpponentsInfo(state.players);
-
     // 내 카드 업데이트 (상대방 턴일 때도 보이도록)
     const myPlayer = state.players.find(p => p.id === gameState.myPlayerId);
     if (myPlayer && myPlayer.handCard && !state.roundOver) {
@@ -460,18 +457,20 @@ function requiresTarget(cardType) {
 // 타겟 선택
 async function selectTarget(card) {
     const state = await fetchGameState();
-    const availableTargets = state.players.filter(p =>
-        p.id !== gameState.myPlayerId && p.alive && !p.protected
-    );
 
-    // 타겟이 없으면 자신을 선택 (PRINCE만 가능)
+    // 마법사 카드는 본인도 타겟 가능
+    let availableTargets;
+    if (card.type === 'PRINCE') {
+        availableTargets = state.players.filter(p => p.alive && !p.protected);
+    } else {
+        availableTargets = state.players.filter(p =>
+            p.id !== gameState.myPlayerId && p.alive && !p.protected
+        );
+    }
+
+    // 타겟이 없으면 카드 버림
     if (availableTargets.length === 0) {
-        if (card.type === 'PRINCE') {
-            await executeCardPlay(card, gameState.myPlayerId, null);
-        } else {
-            // 타겟이 없으면 그냥 카드 버림
-            await executeCardPlay(card, null, null);
-        }
+        await executeCardPlay(card, null, null);
         return;
     }
 
@@ -830,8 +829,8 @@ function addGameLog(message, important = false) {
 
     gameLog.insertBefore(logEntry, gameLog.firstChild);
 
-    // 최대 5개만 유지
-    while (gameLog.children.length > 5) {
+    // 최대 10개만 유지
+    while (gameLog.children.length > 10) {
         gameLog.removeChild(gameLog.lastChild);
     }
 }
