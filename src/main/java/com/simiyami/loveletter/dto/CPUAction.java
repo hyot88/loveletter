@@ -8,6 +8,10 @@ public class CPUAction {
     private Integer guessNumber;
     private String reasoning;
 
+    // 기본 생성자 (Jackson 역직렬화용)
+    public CPUAction() {
+    }
+
     public CPUAction(Card cardToPlay, String targetId, Integer guessNumber) {
         this.cardToPlay = cardToPlay;
         this.targetId = targetId;

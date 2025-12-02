@@ -129,7 +129,10 @@ function updateGameUI(state) {
     // 상대 플레이어 정보 업데이트
     updateOpponentsInfo(state.players);
 
-    // 내 카드는 직접 API로 가져올 때만 업데이트
+    // 서버 게임 로그 업데이트
+    if (state.recentLogs && state.recentLogs.length > 0) {
+        updateGameLog(state.recentLogs);
+    }
 }
 
 // 스코어 보드 업데이트
@@ -281,42 +284,88 @@ function displayMyCards(playableCards, drawnCard) {
         }, 500);
     });
 
-    // 터치 이벤트 초기화
-    initCardSwipe();
-    initCardPlay();
+    // 터치 이벤트 초기화 (통합 핸들러)
+    initCardTouch();
 }
 
-// 카드 스와이프 초기화
-function initCardSwipe() {
+// 카드 터치 이벤트 통합 (스와이프 + 카드 사용)
+function initCardTouch() {
     const cardStack = document.querySelector('.card-stack');
     if (!cardStack) return;
 
+    // 이전 리스너 제거 (중복 방지)
+    const newCardStack = cardStack.cloneNode(true);
+    cardStack.parentNode.replaceChild(newCardStack, cardStack);
+
     let startX = 0;
+    let startY = 0;
     let currentX = 0;
+    let currentY = 0;
     let isDragging = false;
+    let moveDirection = null; // 'horizontal' or 'vertical'
 
-    cardStack.addEventListener('touchstart', (e) => {
+    newCardStack.addEventListener('touchstart', (e) => {
         if (!gameState.isMyTurn) return;
+
         startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        currentX = startX;
+        currentY = startY;
         isDragging = true;
-    });
+        moveDirection = null;
+    }, { passive: true });
 
-    cardStack.addEventListener('touchmove', (e) => {
+    newCardStack.addEventListener('touchmove', (e) => {
         if (!gameState.isMyTurn || !isDragging) return;
-        currentX = e.touches[0].clientX;
-    });
 
-    cardStack.addEventListener('touchend', (e) => {
+        currentX = e.touches[0].clientX;
+        currentY = e.touches[0].clientY;
+
+        const diffX = Math.abs(currentX - startX);
+        const diffY = Math.abs(currentY - startY);
+
+        // 방향 결정 (처음 한 번만)
+        if (!moveDirection && (diffX > 10 || diffY > 10)) {
+            moveDirection = diffX > diffY ? 'horizontal' : 'vertical';
+        }
+
+        // 수직 드래그 (카드 사용)
+        if (moveDirection === 'vertical') {
+            e.preventDefault();
+            const diff = startY - currentY;
+            if (diff > 0) {
+                const frontCard = newCardStack.querySelector('.my-card.front');
+                if (frontCard) {
+                    frontCard.style.transform = `translateY(-${diff}px)`;
+                }
+            }
+        }
+    }, { passive: false });
+
+    newCardStack.addEventListener('touchend', (e) => {
         if (!gameState.isMyTurn || !isDragging) return;
         isDragging = false;
 
-        const diff = currentX - startX;
+        const diffX = currentX - startX;
+        const diffY = startY - currentY;
 
-        if (Math.abs(diff) > 50) {
-            // 카드 전환
-            switchCard(diff > 0 ? -1 : 1);
+        if (moveDirection === 'horizontal' && Math.abs(diffX) > 50) {
+            // 좌우 스와이프 - 카드 전환
+            switchCard(diffX > 0 ? -1 : 1);
+        } else if (moveDirection === 'vertical' && diffY > 100) {
+            // 위로 스와이프 - 카드 사용
+            const selectedCard = gameState.myCards[gameState.selectedCardIndex];
+            playCard(selectedCard);
+        } else {
+            // 취소, 원위치
+            const frontCard = newCardStack.querySelector('.my-card.front');
+            if (frontCard) {
+                frontCard.style.transform = '';
+            }
         }
-    });
+
+        moveDirection = null;
+    }, { passive: true });
 }
 
 // 카드 전환
@@ -332,54 +381,6 @@ function switchCard(direction) {
             card.classList.add('front');
         } else {
             card.classList.add('back');
-        }
-    });
-}
-
-// 카드 사용 초기화
-function initCardPlay() {
-    const cardStack = document.querySelector('.card-stack');
-    if (!cardStack) return;
-
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-
-    cardStack.addEventListener('touchstart', (e) => {
-        if (!gameState.isMyTurn) return;
-        startY = e.touches[0].clientY;
-        isDragging = true;
-    });
-
-    cardStack.addEventListener('touchmove', (e) => {
-        if (!gameState.isMyTurn || !isDragging) return;
-        currentY = e.touches[0].clientY;
-
-        const diff = startY - currentY;
-        if (diff > 0) {
-            const frontCard = document.querySelector('.my-card.front');
-            if (frontCard) {
-                frontCard.style.transform = `translateY(-${diff}px)`;
-            }
-        }
-    });
-
-    cardStack.addEventListener('touchend', (e) => {
-        if (!gameState.isMyTurn || !isDragging) return;
-        isDragging = false;
-
-        const diff = startY - currentY;
-        const frontCard = document.querySelector('.my-card.front');
-
-        if (diff > 100) {
-            // 카드 사용!
-            const selectedCard = gameState.myCards[gameState.selectedCardIndex];
-            playCard(selectedCard);
-        } else {
-            // 취소, 원위치
-            if (frontCard) {
-                frontCard.style.transform = '';
-            }
         }
     });
 }
@@ -670,6 +671,11 @@ async function startNextRound() {
     const overlay = document.getElementById('roundOverOverlay');
     overlay.classList.remove('show');
 
+    // 중앙 카드 영역 초기화
+    const lastPlayedCard = document.getElementById('lastPlayedCard');
+    lastPlayedCard.innerHTML = '';
+    lastPlayedCard.classList.remove('show');
+
     showLoading('다음 라운드를 준비하는 중...');
 
     try {
@@ -683,6 +689,7 @@ async function startNextRound() {
         hideLoading();
 
         gameState.roundOver = false;
+        gameState.selectedCardIndex = 0; // 카드 인덱스 초기화
         updateGameUI(state);
 
         addGameLog('새 라운드가 시작되었습니다!');
@@ -716,6 +723,27 @@ function addGameLog(message, important = false) {
     // 최대 5개만 유지
     while (gameLog.children.length > 5) {
         gameLog.removeChild(gameLog.lastChild);
+    }
+}
+
+// 서버 게임 로그로 업데이트 (덮어쓰기)
+function updateGameLog(logs) {
+    const gameLog = document.getElementById('gameLog');
+    gameLog.innerHTML = '';
+
+    // 최근 로그부터 표시 (역순)
+    for (let i = logs.length - 1; i >= 0; i--) {
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+
+        const message = logs[i];
+        const importantKeywords = ['시작', '종료', '승리', '탈락', '사용'];
+        if (importantKeywords.some(keyword => message.includes(keyword))) {
+            logEntry.classList.add('important');
+        }
+
+        logEntry.textContent = message;
+        gameLog.appendChild(logEntry);
     }
 }
 

@@ -1,12 +1,18 @@
 package com.simiyami.loveletter.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.simiyami.loveletter.enums.CardType;
 
 public class Card {
     private final CardType type;
     private final String id;
 
-    public Card(CardType type, String id) {
+    @JsonCreator
+    public Card(
+        @JsonProperty("type") CardType type,
+        @JsonProperty("id") String id
+    ) {
         this.type = type;
         this.id = id;
     }
