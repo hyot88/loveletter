@@ -129,6 +129,12 @@ function updateGameUI(state) {
     // 상대 플레이어 정보 업데이트
     updateOpponentsInfo(state.players);
 
+    // 내 카드 업데이트 (상대방 턴일 때도 보이도록)
+    const myPlayer = state.players.find(p => p.id === gameState.myPlayerId);
+    if (myPlayer && myPlayer.handCard && !state.roundOver) {
+        displayRemainingCard(myPlayer.handCard);
+    }
+
     // 서버 게임 로그 업데이트
     if (state.recentLogs && state.recentLogs.length > 0) {
         updateGameLog(state.recentLogs);
@@ -257,7 +263,7 @@ async function handleMyTurn() {
     }
 }
 
-// 내 카드 표시
+// 내 카드 표시 (2장 - 턴 시작 시)
 function displayMyCards(playableCards, drawnCard) {
     const myCards = document.getElementById('myCards');
     const cardStack = myCards.querySelector('.card-stack');
@@ -286,6 +292,31 @@ function displayMyCards(playableCards, drawnCard) {
 
     // 터치 이벤트 초기화 (통합 핸들러)
     initCardTouch();
+}
+
+// 남은 카드 표시 (1장 - 상대방 턴일 때)
+function displayRemainingCard(card) {
+    const myCards = document.getElementById('myCards');
+    const cardStack = myCards.querySelector('.card-stack');
+
+    // 이미 카드가 표시되어 있으면 업데이트하지 않음 (내 턴일 때는 displayMyCards 사용)
+    if (cardStack.children.length > 1) return;
+
+    cardStack.innerHTML = '';
+    gameState.myCards = [card];
+    gameState.selectedCardIndex = 0;
+
+    const cardEl = document.createElement('div');
+    cardEl.className = 'my-card front';
+    cardEl.dataset.index = 0;
+    cardEl.dataset.cardId = card.id;
+
+    const img = document.createElement('img');
+    img.src = `/image/${card.number}.png`;
+    img.alt = card.name;
+    cardEl.appendChild(img);
+
+    cardStack.appendChild(cardEl);
 }
 
 // 카드 터치 이벤트 통합 (스와이프 + 카드 사용)
@@ -535,13 +566,8 @@ async function executeCardPlay(card, targetId, guessNumber) {
         addGameLog(`${card.name}을(를) 사용했습니다.`);
         await delay(1500);
 
+        // 게임 UI 업데이트 (남은 카드 자동 표시)
         updateGameUI(state);
-
-        // 내 카드 영역 초기화
-        const cardStack = document.querySelector('.card-stack');
-        if (cardStack) {
-            cardStack.innerHTML = '';
-        }
 
         // actionResolve 호출하여 waitForPlayerAction 해제
         if (gameState.actionResolve) {

@@ -83,15 +83,19 @@ com.simiyami.loveletter/
 
 ## AI Implementation Strategy
 
-**Guard AI Logic (Critical)**: When CPU plays Guard (1), it must intelligently guess opponent's card:
-1. Collect all revealed cards (discarded pile + CPU's own hand)
-2. Remove revealed cards from possible guesses (2-8, excluding 1)
-3. Weight remaining possibilities based on card distribution
-4. Make educated guess from remaining cards
+**CPU Memory System**: The AI maintains a memory of opponent cards learned through PRIEST (viewing) and KING (exchanging). This memory is stored in `Player.knownOpponentCards` (Map<String, CardType>) and is automatically managed by CardService.
+
+**Strategic Card Play**:
+- **Guard (1)**: Prioritizes known opponent cards with validation (checks if opponent hasn't played it yet), falls back to probability-based guessing from unrevealed cards
+- **Priest (2)**: Automatically remembers viewed cards for future decision-making
+- **Baron (3)**: Only plays against opponents with known lower cards, otherwise uses discard pile analysis
+- **Handmaid (4)**: Uses when multiple opponents exist and protection is valuable
+- **Prince (5)**: Targets known PRINCESS holders for elimination, otherwise targets players with few discards (likely high cards)
+- **King (6)**: Exchanges PRINCESS to opponents (for later GUARD elimination), or acquires known high-value cards
+- **Countess (7)**: Mandatory play enforced when holding PRINCE or KING (score: 2, low priority)
+- **Princess (8)**: Never plays (score: -100)
 
 **CPU Turn Delays**: Implement 2-second delays between actions (draw, think, play) for natural gameplay feel. This should be handled in frontend JavaScript with async/await.
-
-**Card Priority Logic**: AI should evaluate card value based on game state - prefer high-impact plays (Baron when holding high card, Prince to force Princess discard if suspected).
 
 ## Mobile-First UI/UX Design
 
@@ -186,5 +190,12 @@ The `startTurnCycle()` function loops through players:
 **Turn Advancement**: GameController must call `gameService.nextTurn()` after `playCard()` completes (unless round is over). Without this, the game will get stuck on the same player.
 
 **Frontend Turn Cycle**: Avoid duplicate `startTurnCycle()` calls. Use Promise resolution pattern (`actionResolve`) to signal when player action completes, rather than recursively calling `startTurnCycle()` from within action handlers.
+
+**Card Visibility Management**: The frontend must maintain card visibility throughout all game phases:
+- During opponent's turn: `displayRemainingCard()` shows the player's single `handCard` from server state
+- During player's turn: `displayMyCards()` shows both `handCard` and `drawnCard` for selection
+- After playing a card: `updateGameUI()` automatically displays remaining card from server state
+- The `updateGameUI()` function checks `myPlayer.handCard` and calls `displayRemainingCard()` when `!state.roundOver`
+- Never manually clear card display with `innerHTML = ''` - rely on `updateGameUI()` for proper state synchronization
 
 **Test Updates**: When modifying core game flow (like adding `drawnCard`), existing tests may fail. Update tests to work WITH the new logic rather than AROUND it - remove manual card management and let GameService handle it naturally.

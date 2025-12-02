@@ -4,7 +4,9 @@ import com.simiyami.loveletter.enums.CardType;
 import com.simiyami.loveletter.enums.PlayerType;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Player {
     private final String id;
@@ -17,11 +19,15 @@ public class Player {
     private boolean isProtected;
     private int roundsWon;
 
+    // CPU 메모리 시스템: 상대방의 카드 기억
+    private final Map<String, CardType> knownOpponentCards;  // playerId -> 알려진 카드
+
     public Player(String id, String name, PlayerType type) {
         this.id = id;
         this.name = name;
         this.type = type;
         this.discardedCards = new ArrayList<>();
+        this.knownOpponentCards = new HashMap<>();
         this.isAlive = true;
         this.isProtected = false;
         this.roundsWon = 0;
@@ -111,8 +117,30 @@ public class Player {
         this.handCard = null;
         this.drawnCard = null;
         this.discardedCards.clear();
+        this.knownOpponentCards.clear();
         this.isAlive = true;
         this.isProtected = false;
+    }
+
+    // CPU 메모리 관련 메서드
+    public void rememberOpponentCard(String playerId, CardType cardType) {
+        this.knownOpponentCards.put(playerId, cardType);
+    }
+
+    public CardType getKnownOpponentCard(String playerId) {
+        return this.knownOpponentCards.get(playerId);
+    }
+
+    public void forgetOpponentCard(String playerId) {
+        this.knownOpponentCards.remove(playerId);
+    }
+
+    public boolean knowsOpponentCard(String playerId) {
+        return this.knownOpponentCards.containsKey(playerId);
+    }
+
+    public Map<String, CardType> getAllKnownCards() {
+        return new HashMap<>(knownOpponentCards);
     }
 
     @Override

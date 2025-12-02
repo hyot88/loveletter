@@ -56,6 +56,9 @@ public class CardService {
         if (targetCard != null) {
             game.addLog(String.format("%s가 %s의 카드를 확인했습니다: %s",
                 player.getName(), target.getName(), targetCard.toString()));
+
+            // CPU 메모리: 상대방의 카드 기억
+            player.rememberOpponentCard(target.getId(), targetCard.getType());
         }
     }
 
@@ -149,6 +152,10 @@ public class CardService {
             game.addLog("장군: 카드가 없습니다.");
             return;
         }
+
+        // CPU 메모리: 카드 교환 시 서로의 카드를 알게 됨
+        player.rememberOpponentCard(target.getId(), targetCard.getType());
+        target.rememberOpponentCard(player.getId(), playerCard.getType());
 
         player.setHandCard(targetCard);
         target.setHandCard(playerCard);

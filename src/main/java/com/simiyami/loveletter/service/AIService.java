@@ -8,7 +8,6 @@ import com.simiyami.loveletter.model.Player;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class AIService {
@@ -130,7 +129,19 @@ public class AIService {
         // 카드 종류에 따라 타겟 선택 전략
         switch (card.getType()) {
             case BARON:
-                // 바론: 가장 약한 것으로 예상되는 플레이어 선택 (버린 카드가 낮은 플레이어)
+                // 바론: 알고 있는 카드가 낮은 플레이어 우선, 없으면 버린 카드 기반 추론
+                for (Player target : targetablePlayers) {
+                    if (cpuPlayer.knowsOpponentCard(target.getId())) {
+                        CardType knownCard = cpuPlayer.getKnownOpponentCard(target.getId());
+                        // 상대가 낮은 카드를 가지고 있고, 내 카드가 더 높으면 타겟팅
+                        if (knownCard.getNumber() < cpuPlayer.getHandCard().getNumber()) {
+                            System.out.println(String.format("[AI] 바론: %s의 카드(%s)가 내 카드(%d)보다 낮음 - 타겟!",
+                                target.getName(), knownCard.getName(), cpuPlayer.getHandCard().getNumber()));
+                            return target;
+                        }
+                    }
+                }
+                // 정보가 없으면 버린 카드가 가장 낮은 플레이어 선택
                 return targetablePlayers.stream()
                     .min(Comparator.comparingInt(p ->
                         p.getDiscardedCards().stream()
@@ -140,13 +151,49 @@ public class AIService {
                     .orElse(targetablePlayers.get(0));
 
             case PRINCE:
-                // 프린스: 높은 카드를 가진 것으로 의심되는 플레이어 (버린 카드가 낮은 플레이어)
+                // 프린스: 공주를 가진 플레이어 우선 타겟
+                for (Player target : targetablePlayers) {
+                    if (cpuPlayer.knowsOpponentCard(target.getId())) {
+                        CardType knownCard = cpuPlayer.getKnownOpponentCard(target.getId());
+                        if (knownCard == CardType.PRINCESS) {
+                            System.out.println(String.format("[AI] 마법사: %s가 공주 소유 확인 - 타겟하여 제거!",
+                                target.getName()));
+                            return target;
+                        }
+                    }
+                }
+                // 공주가 없으면 높은 카드를 가진 것으로 의심되는 플레이어
                 return targetablePlayers.stream()
                     .min(Comparator.comparingInt(p ->
                         p.getDiscardedCards().stream()
                             .mapToInt(Card::getNumber)
                             .sum()))
                     .orElse(targetablePlayers.get(0));
+
+            case KING:
+                // 장군: 높은 카드를 가진 플레이어 우선, 또는 공주를 줄 수 있는 플레이어
+                // 1. 내가 공주를 가지고 있다면 상대에게 주기
+                if (cpuPlayer.getHandCard().getType() == CardType.PRINCESS) {
+                    // 아무나 선택 (공주를 줘서 나중에 경비병으로 제거)
+                    System.out.println(String.format("[AI] 장군: 공주를 %s에게 전달",
+                        targetablePlayers.get(0).getName()));
+                    return targetablePlayers.get(0);
+                }
+
+                // 2. 높은 카드를 가진 플레이어와 교환
+                for (Player target : targetablePlayers) {
+                    if (cpuPlayer.knowsOpponentCard(target.getId())) {
+                        CardType knownCard = cpuPlayer.getKnownOpponentCard(target.getId());
+                        // 상대가 높은 카드를 가지고 있으면 교환
+                        if (knownCard.getNumber() > cpuPlayer.getHandCard().getNumber()) {
+                            System.out.println(String.format("[AI] 장군: %s의 카드(%s)가 내 카드(%d)보다 높음 - 교환!",
+                                target.getName(), knownCard.getName(), cpuPlayer.getHandCard().getNumber()));
+                            return target;
+                        }
+                    }
+                }
+                // 정보가 없으면 랜덤 선택
+                return targetablePlayers.get(random.nextInt(targetablePlayers.size()));
 
             default:
                 // 기본: 랜덤 선택
@@ -155,43 +202,61 @@ public class AIService {
     }
 
     private Integer guessCardNumber(Game game, Player cpuPlayer, Player target) {
-        // 1. 이미 공개된 모든 카드 수집
-        Set<Integer> revealedCards = new HashSet<>();
+        // 1. 메모리에서 타겟의 카드를 알고 있는지 확인
+        if (cpuPlayer.knowsOpponentCard(target.getId())) {
+            CardType knownCard = cpuPlayer.getKnownOpponentCard(target.getId());
 
-        // 버린 카드들 (공개 더미)
-        game.getDiscardPile().forEach(card -> revealedCards.add(card.getNumber()));
+            // 타겟이 마지막으로 카드를 사용했는지 확인
+            if (!target.getDiscardedCards().isEmpty()) {
+                Card lastDiscarded = target.getDiscardedCards().get(target.getDiscardedCards().size() - 1);
 
-        // 모든 플레이어의 버린 카드들
-        game.getPlayers().forEach(player ->
-            player.getDiscardedCards().forEach(card -> revealedCards.add(card.getNumber())));
-
-        // CPU가 가진 카드들
-        if (cpuPlayer.getHandCard() != null) {
-            revealedCards.add(cpuPlayer.getHandCard().getNumber());
-        }
-
-        // 2. 가능한 카드 목록 (2-8번, 1번 제외)
-        List<Integer> possibleCards = new ArrayList<>();
-        for (CardType type : CardType.values()) {
-            if (type.getNumber() == 1) continue; // 경비병은 추측 불가
-
-            for (int i = 0; i < type.getCount(); i++) {
-                possibleCards.add(type.getNumber());
+                // 마지막으로 버린 카드가 우리가 알던 카드가 아니라면, 아직 가지고 있을 수 있음
+                if (lastDiscarded.getType() != knownCard) {
+                    System.out.println(String.format("[AI] %s가 기억한 %s의 카드: %s - 지목!",
+                        cpuPlayer.getName(), target.getName(), knownCard.getName()));
+                    return knownCard.getNumber();
+                } else {
+                    // 알던 카드를 사용했으므로 더 이상 유효하지 않음
+                    cpuPlayer.forgetOpponentCard(target.getId());
+                    System.out.println(String.format("[AI] %s가 %s를 사용했으므로 기억 삭제",
+                        target.getName(), knownCard.getName()));
+                }
+            } else {
+                // 카드를 버리지 않았다면 아직 가지고 있을 가능성이 높음
+                System.out.println(String.format("[AI] %s가 기억한 %s의 카드: %s - 지목!",
+                    cpuPlayer.getName(), target.getName(), knownCard.getName()));
+                return knownCard.getNumber();
             }
         }
 
-        // 3. 이미 나온 카드 제외
-        List<Integer> remainingCards = new ArrayList<>();
-        for (Integer num : possibleCards) {
-            long revealedCount = revealedCards.stream().filter(r -> r.equals(num)).count();
-            long totalCount = Arrays.stream(CardType.values())
-                .filter(t -> t.getNumber() == num)
-                .mapToInt(CardType::getCount)
-                .sum();
+        // 2. 이미 공개된 모든 카드 수집
+        Map<Integer, Integer> revealedCardCounts = new HashMap<>();
 
-            // 남은 카드가 있으면 추가
-            if (revealedCount < totalCount) {
-                remainingCards.add(num);
+        // 버린 카드들 (공개 더미)
+        game.getDiscardPile().forEach(card ->
+            revealedCardCounts.merge(card.getNumber(), 1, Integer::sum));
+
+        // 모든 플레이어의 버린 카드들
+        game.getPlayers().forEach(player ->
+            player.getDiscardedCards().forEach(card ->
+                revealedCardCounts.merge(card.getNumber(), 1, Integer::sum)));
+
+        // CPU가 가진 카드들
+        if (cpuPlayer.getHandCard() != null) {
+            revealedCardCounts.merge(cpuPlayer.getHandCard().getNumber(), 1, Integer::sum);
+        }
+
+        // 3. 남은 카드 확률 계산 (2-8번, 1번 제외)
+        Map<Integer, Integer> remainingCardCounts = new HashMap<>();
+        for (CardType type : CardType.values()) {
+            if (type.getNumber() == 1) continue; // 경비병은 추측 불가
+
+            int totalCount = type.getCount();
+            int revealedCount = revealedCardCounts.getOrDefault(type.getNumber(), 0);
+            int remaining = totalCount - revealedCount;
+
+            if (remaining > 0) {
+                remainingCardCounts.put(type.getNumber(), remaining);
             }
         }
 
@@ -203,22 +268,39 @@ public class AIService {
                 .average()
                 .orElse(4.0);
 
-            if (avgDiscarded < 4 && remainingCards.stream().anyMatch(n -> n >= 5)) {
-                // 높은 카드 우선 추측
-                List<Integer> highCards = remainingCards.stream()
-                    .filter(n -> n >= 5)
-                    .collect(Collectors.toList());
-                if (!highCards.isEmpty()) {
-                    return highCards.get(random.nextInt(highCards.size()));
+            if (avgDiscarded < 4) {
+                // 높은 카드 우선 (확률적으로)
+                List<Integer> weightedGuesses = new ArrayList<>();
+                for (Map.Entry<Integer, Integer> entry : remainingCardCounts.entrySet()) {
+                    int cardNum = entry.getKey();
+                    int count = entry.getValue();
+
+                    // 5번 이상 카드에 가중치 부여
+                    int weight = cardNum >= 5 ? count * 2 : count;
+                    for (int i = 0; i < weight; i++) {
+                        weightedGuesses.add(cardNum);
+                    }
+                }
+
+                if (!weightedGuesses.isEmpty()) {
+                    return weightedGuesses.get(random.nextInt(weightedGuesses.size()));
                 }
             }
         }
 
-        // 5. 남은 카드 중 랜덤 선택 (없으면 기본값 2)
-        if (remainingCards.isEmpty()) {
+        // 5. 확률 기반 추측
+        List<Integer> weightedGuesses = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> entry : remainingCardCounts.entrySet()) {
+            for (int i = 0; i < entry.getValue(); i++) {
+                weightedGuesses.add(entry.getKey());
+            }
+        }
+
+        // 6. 남은 카드 중 확률적 선택 (없으면 기본값 2)
+        if (weightedGuesses.isEmpty()) {
             return 2; // 기본값
         }
 
-        return remainingCards.get(random.nextInt(remainingCards.size()));
+        return weightedGuesses.get(random.nextInt(weightedGuesses.size()));
     }
 }
