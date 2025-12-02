@@ -174,7 +174,7 @@ function updateOpponentsInfo(players) {
         const opponentCard = document.createElement('div');
         opponentCard.className = 'opponent-card';
 
-        if (player.protected) {
+        if (player.isProtected) {
             opponentCard.classList.add('protected');
         }
 
@@ -188,7 +188,7 @@ function updateOpponentsInfo(players) {
         if (!player.alive) {
             statusText = '탈락';
             statusClass = 'eliminated';
-        } else if (player.protected) {
+        } else if (player.isProtected) {
             statusText = '보호 중';
             statusClass = 'protected';
         }
@@ -256,8 +256,8 @@ async function handleMyTurn() {
 
         addGameLog('카드를 뽑았습니다.');
 
-        // 내 카드 표시
-        displayMyCards(data.playableCards, data.drawnCard);
+        // 내 카드 표시 (모든 카드 + 플레이 가능한 카드)
+        displayMyCards(data.allCards, data.playableCards, data.drawnCard);
 
         // 사용자 입력 대기
         await waitForPlayerAction();
@@ -270,18 +270,25 @@ async function handleMyTurn() {
 }
 
 // 내 카드 표시 (2장 - 턴 시작 시)
-function displayMyCards(playableCards, drawnCard) {
+function displayMyCards(allCards, playableCards, drawnCard) {
     const myCards = document.getElementById('myCards');
     const cardStack = myCards.querySelector('.card-stack');
     cardStack.innerHTML = '';
 
-    gameState.myCards = playableCards;
+    gameState.myCards = allCards;
+    gameState.playableCardIds = playableCards.map(c => c.id);  // 플레이 가능한 카드 ID 저장
 
-    playableCards.forEach((card, index) => {
+    allCards.forEach((card, index) => {
         const cardEl = document.createElement('div');
         cardEl.className = `my-card ${index === 0 ? 'front' : 'back'} card-draw-animation`;
         cardEl.dataset.index = index;
         cardEl.dataset.cardId = card.id;
+
+        // 플레이 불가능한 카드는 disabled 표시
+        const isPlayable = gameState.playableCardIds.includes(card.id);
+        if (!isPlayable) {
+            cardEl.classList.add('disabled');
+        }
 
         const img = document.createElement('img');
         img.src = `/image/${card.number}.png`;
@@ -424,14 +431,21 @@ function switchCard(direction) {
 
 // 카드 사용
 async function playCard(selectedCard) {
-    gameState.isMyTurn = false;
-
     // front 카드의 실제 cardId를 DOM에서 직접 확인
     const frontCard = document.querySelector('.my-card.front');
     if (!frontCard) {
         console.error('front 카드를 찾을 수 없습니다.');
         return;
     }
+
+    // disabled 카드는 사용 불가
+    if (frontCard.classList.contains('disabled')) {
+        addGameLog('이 카드는 사용할 수 없습니다. (후작 강제 플레이 규칙)');
+        frontCard.style.transform = '';  // 원위치
+        return;
+    }
+
+    gameState.isMyTurn = false;
 
     const frontCardId = frontCard.dataset.cardId;
     const actualCard = gameState.myCards.find(c => c.id === frontCardId);
@@ -474,10 +488,10 @@ async function selectTarget(card) {
     // 마법사 카드는 본인도 타겟 가능
     let availableTargets;
     if (card.type === 'PRINCE') {
-        availableTargets = state.players.filter(p => p.alive && !p.protected);
+        availableTargets = state.players.filter(p => p.alive && !p.isProtected);
     } else {
         availableTargets = state.players.filter(p =>
-            p.id !== gameState.myPlayerId && p.alive && !p.protected
+            p.id !== gameState.myPlayerId && p.alive && !p.isProtected
         );
     }
 
@@ -587,16 +601,17 @@ async function executeCardPlay(card, targetId, guessNumber) {
         // 중앙 카드 영역에 표시
         showCentralCard(card);
 
-        // 사용한 카드를 즉시 화면에서 제거
-        const cardStack = document.querySelector('.card-stack');
-        if (cardStack) {
-            cardStack.innerHTML = '';
+        addGameLog(`${card.name}을(를) 사용했습니다.`);
+
+        // 남은 카드 즉시 표시
+        const myPlayer = state.players.find(p => p.id === gameState.myPlayerId);
+        if (myPlayer && myPlayer.handCard && !state.roundOver) {
+            displayRemainingCard(myPlayer.handCard);
         }
 
-        addGameLog(`${card.name}을(를) 사용했습니다.`);
         await delay(1500);
 
-        // 게임 UI 업데이트 (남은 카드 자동 표시)
+        // 게임 UI 업데이트
         updateGameUI(state);
 
         // actionResolve 호출하여 waitForPlayerAction 해제
@@ -785,11 +800,22 @@ async function handleRoundOver(state) {
 
     // 승자 발표
     const winner = state.players.find(p => p.id === state.roundWinnerId);
-    let announceText = `승자: ${winner.name}`;
+    winnerAnnounce.innerHTML = '';  // 초기화
+
+    const winnerLine = document.createElement('div');
+    winnerLine.textContent = `승자: ${winner.name}`;
+    winnerLine.style.fontSize = '1.3em';
+    winnerLine.style.fontWeight = 'bold';
+    winnerLine.style.marginBottom = '10px';
+    winnerAnnounce.appendChild(winnerLine);
+
     if (state.roundWinReason) {
-        announceText += `\n승리 사유: ${state.roundWinReason}`;
+        const reasonLine = document.createElement('div');
+        reasonLine.textContent = `승리 사유: ${state.roundWinReason}`;
+        reasonLine.style.fontSize = '1em';
+        reasonLine.style.color = '#666';
+        winnerAnnounce.appendChild(reasonLine);
     }
-    winnerAnnounce.textContent = announceText;
 
     overlay.classList.add('show');
 }

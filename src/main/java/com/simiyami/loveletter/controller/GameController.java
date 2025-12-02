@@ -11,6 +11,7 @@ import com.simiyami.loveletter.service.GameService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,9 +54,19 @@ public class GameController {
 
             Card drawnCard = gameService.drawCardForPlayer(game, player);
 
+            // 모든 카드 (UI 표시용)
+            List<Card> allCards = new ArrayList<>();
+            if (drawnCard != null) {
+                allCards.add(drawnCard);
+            }
+            if (player.getHandCard() != null) {
+                allCards.add(player.getHandCard());
+            }
+
             Map<String, Object> response = new HashMap<>();
             response.put("drawnCard", drawnCard);
-            response.put("playableCards", gameService.getPlayableCards(player, drawnCard));
+            response.put("allCards", allCards);  // 모든 카드 (표시용)
+            response.put("playableCards", gameService.getPlayableCards(player, drawnCard));  // 플레이 가능한 카드만
             response.put("gameState", GameState.fromGame(game, playerId));
 
             return ResponseEntity.ok(response);
