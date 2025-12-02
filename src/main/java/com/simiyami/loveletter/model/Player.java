@@ -18,6 +18,7 @@ public class Player {
     private boolean isAlive;
     private boolean isProtected;
     private int roundsWon;
+    private String eliminationReason;  // 탈락 사유
 
     // CPU 메모리 시스템: 상대방의 카드 기억
     private final Map<String, CardType> knownOpponentCards;  // playerId -> 알려진 카드
@@ -113,6 +114,16 @@ public class Player {
         this.isProtected = false;
     }
 
+    public void eliminate(String reason) {
+        this.isAlive = false;
+        this.isProtected = false;
+        this.eliminationReason = reason;
+    }
+
+    public String getEliminationReason() {
+        return eliminationReason;
+    }
+
     public void resetForNewRound() {
         this.handCard = null;
         this.drawnCard = null;
@@ -120,6 +131,7 @@ public class Player {
         this.knownOpponentCards.clear();
         this.isAlive = true;
         this.isProtected = false;
+        this.eliminationReason = null;
     }
 
     // CPU 메모리 관련 메서드

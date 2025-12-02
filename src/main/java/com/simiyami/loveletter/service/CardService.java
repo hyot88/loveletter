@@ -40,7 +40,11 @@ public class CardService {
 
         if (target.getHandCard() != null && target.getHandCard().getNumber() == guessNumber) {
             game.addLog(String.format("정답! %s가 탈락했습니다!", target.getName()));
-            target.eliminate();
+            String reason = String.format("%s가 경비병으로 %s 지목해서 탈락",
+                player.getName(), target.getHandCard().getName());
+            target.eliminate(reason);
+            game.setLastEliminatedPlayer(target);
+            game.setLastEliminationReason(reason);
         } else {
             game.addLog("틀렸습니다!");
         }
@@ -83,11 +87,21 @@ public class CardService {
         if (playerCard.getNumber() > targetCard.getNumber()) {
             game.addLog(String.format("%s가 승리! %s가 탈락했습니다.",
                 player.getName(), target.getName()));
-            target.eliminate();
+            String reason = String.format("%s와 기사 대결에서 패배 (%s %d < %s %d)",
+                player.getName(), targetCard.getName(), targetCard.getNumber(),
+                playerCard.getName(), playerCard.getNumber());
+            target.eliminate(reason);
+            game.setLastEliminatedPlayer(target);
+            game.setLastEliminationReason(reason);
         } else if (playerCard.getNumber() < targetCard.getNumber()) {
             game.addLog(String.format("%s가 승리! %s가 탈락했습니다.",
                 target.getName(), player.getName()));
-            player.eliminate();
+            String reason = String.format("%s와 기사 대결에서 패배 (%s %d < %s %d)",
+                target.getName(), playerCard.getName(), playerCard.getNumber(),
+                targetCard.getName(), targetCard.getNumber());
+            player.eliminate(reason);
+            game.setLastEliminatedPlayer(player);
+            game.setLastEliminationReason(reason);
         } else {
             game.addLog("무승부! 둘 다 무사합니다.");
         }
@@ -118,8 +132,11 @@ public class CardService {
 
         if (targetCard.getType() == CardType.PRINCESS) {
             game.addLog(String.format("%s가 공주를 버려서 탈락했습니다!", target.getName()));
-            target.eliminate();
+            String reason = String.format("%s의 마법사로 공주를 버려서 탈락", player.getName());
+            target.eliminate(reason);
             target.setHandCard(null);
+            game.setLastEliminatedPlayer(target);
+            game.setLastEliminationReason(reason);
             return;
         }
 
@@ -170,6 +187,9 @@ public class CardService {
 
     private void executePrincess(Game game, Player player) {
         game.addLog(String.format("%s가 공주를 버려서 즉시 탈락했습니다!", player.getName()));
-        player.eliminate();
+        String reason = "공주를 직접 버려서 탈락";
+        player.eliminate(reason);
+        game.setLastEliminatedPlayer(player);
+        game.setLastEliminationReason(reason);
     }
 }

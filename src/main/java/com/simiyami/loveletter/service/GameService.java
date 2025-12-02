@@ -144,8 +144,14 @@ public class GameService {
         if (winner != null) {
             game.setRoundWinner(winner);
             winner.incrementRoundsWon();
+
+            // 승리 사유 결정
+            String winReason = determineWinReason(game, winner);
+            game.setRoundWinReason(winReason);
+
             game.addLog(String.format("=== 라운드 %d 승자: %s ===",
                 game.getCurrentRound(), winner.getName()));
+            game.addLog(String.format("승리 사유: %s", winReason));
 
             game.addLog("\n=== 최종 카드 공개 ===");
             for (Player player : game.getPlayers()) {
@@ -160,6 +166,26 @@ public class GameService {
             }
         } else {
             game.addLog("=== 무승부 ===");
+        }
+    }
+
+    private String determineWinReason(Game game, Player winner) {
+        List<Player> alivePlayers = game.getAlivePlayers();
+
+        if (alivePlayers.size() == 1) {
+            // 마지막 생존자 - 구체적인 탈락 사유 포함
+            if (game.getLastEliminatedPlayer() != null && game.getLastEliminationReason() != null) {
+                return game.getLastEliminationReason();
+            }
+            return "마지막 생존자";
+        } else {
+            // 최고 카드 보유
+            Card winnerCard = winner.getHandCard();
+            if (winnerCard != null) {
+                return String.format("최고 카드 보유 (%s %d번)",
+                    winnerCard.getName(), winnerCard.getNumber());
+            }
+            return "승리";
         }
     }
 
@@ -210,11 +236,12 @@ public class GameService {
 
     public List<Card> getPlayableCards(Player player, Card drawnCard) {
         List<Card> cards = new ArrayList<>();
-        if (player.getHandCard() != null) {
-            cards.add(player.getHandCard());
-        }
+        // 새로 뽑은 카드를 먼저 추가 (프론트엔드에서 앞에 표시)
         if (drawnCard != null) {
             cards.add(drawnCard);
+        }
+        if (player.getHandCard() != null) {
+            cards.add(player.getHandCard());
         }
 
         // Countess 강제 플레이 체크

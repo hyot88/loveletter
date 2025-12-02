@@ -127,9 +127,9 @@ function updateGameUI(state) {
     // 스코어 보드 업데이트
     updateScoreBoard(state.players);
 
-    // 내 카드 업데이트 (상대방 턴일 때도 보이도록)
+    // 내 카드 업데이트 (내 턴이 아니고, 라운드가 끝나지 않았을 때만)
     const myPlayer = state.players.find(p => p.id === gameState.myPlayerId);
-    if (myPlayer && myPlayer.handCard && !state.roundOver) {
+    if (myPlayer && myPlayer.handCard && !state.roundOver && state.currentPlayerId !== gameState.myPlayerId) {
         displayRemainingCard(myPlayer.handCard);
     }
 
@@ -423,29 +423,42 @@ function switchCard(direction) {
 }
 
 // 카드 사용
-async function playCard(card) {
+async function playCard(selectedCard) {
     gameState.isMyTurn = false;
-    gameState.pendingCard = card;
 
-    addGameLog(`${card.name}을(를) 선택했습니다.`);
+    // front 카드의 실제 cardId를 DOM에서 직접 확인
+    const frontCard = document.querySelector('.my-card.front');
+    if (!frontCard) {
+        console.error('front 카드를 찾을 수 없습니다.');
+        return;
+    }
+
+    const frontCardId = frontCard.dataset.cardId;
+    const actualCard = gameState.myCards.find(c => c.id === frontCardId);
+
+    if (!actualCard) {
+        console.error('카드를 찾을 수 없습니다:', frontCardId);
+        return;
+    }
+
+    gameState.pendingCard = actualCard;
+
+    addGameLog(`${actualCard.name}을(를) 선택했습니다.`);
 
     // 카드 애니메이션
-    const frontCard = document.querySelector('.my-card.front');
-    if (frontCard) {
-        // 잔상 방지: transform 초기화 후 애니메이션 적용
-        frontCard.style.transform = '';
-        await delay(50); // 약간의 딜레이로 초기화 확실히 적용
-        frontCard.classList.add('card-play-animation');
-    }
+    // 잔상 방지: transform 초기화 후 애니메이션 적용
+    frontCard.style.transform = '';
+    await delay(50); // 약간의 딜레이로 초기화 확실히 적용
+    frontCard.classList.add('card-play-animation');
 
     await delay(300);
 
     // 타겟 선택이 필요한지 확인
-    if (requiresTarget(card.type)) {
-        await selectTarget(card);
+    if (requiresTarget(actualCard.type)) {
+        await selectTarget(actualCard);
     } else {
         // 타겟 불필요, 바로 실행
-        await executeCardPlay(card, null, null);
+        await executeCardPlay(actualCard, null, null);
     }
 }
 
@@ -573,6 +586,12 @@ async function executeCardPlay(card, targetId, guessNumber) {
 
         // 중앙 카드 영역에 표시
         showCentralCard(card);
+
+        // 사용한 카드를 즉시 화면에서 제거
+        const cardStack = document.querySelector('.card-stack');
+        if (cardStack) {
+            cardStack.innerHTML = '';
+        }
 
         addGameLog(`${card.name}을(를) 사용했습니다.`);
         await delay(1500);
@@ -766,7 +785,11 @@ async function handleRoundOver(state) {
 
     // 승자 발표
     const winner = state.players.find(p => p.id === state.roundWinnerId);
-    winnerAnnounce.textContent = `승자: ${winner.name}`;
+    let announceText = `승자: ${winner.name}`;
+    if (state.roundWinReason) {
+        announceText += `\n승리 사유: ${state.roundWinReason}`;
+    }
+    winnerAnnounce.textContent = announceText;
 
     overlay.classList.add('show');
 }

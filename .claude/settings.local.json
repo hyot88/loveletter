@@ -8,7 +8,8 @@
       "Bash(./gradlew bootRun)",
       "Bash(lsof:*)",
       "Bash(xargs kill -9)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(./gradlew build)"
     ],
     "deny": [],
     "ask": []

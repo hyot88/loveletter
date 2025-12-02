@@ -13,6 +13,7 @@ public class GameState {
     private boolean roundOver;
     private String roundWinnerId;
     private String roundWinnerName;
+    private String roundWinReason;
     private Card secretCard;
 
     public static class PlayerInfo {
@@ -72,6 +73,7 @@ public class GameState {
         if (game.getRoundWinner() != null) {
             state.roundWinnerId = game.getRoundWinner().getId();
             state.roundWinnerName = game.getRoundWinner().getName();
+            state.roundWinReason = game.getRoundWinReason();
             state.secretCard = game.getSecretCard();
         }
 
@@ -88,5 +90,6 @@ public class GameState {
     public boolean isRoundOver() { return roundOver; }
     public String getRoundWinnerId() { return roundWinnerId; }
     public String getRoundWinnerName() { return roundWinnerName; }
+    public String getRoundWinReason() { return roundWinReason; }
     public Card getSecretCard() { return secretCard; }
 }

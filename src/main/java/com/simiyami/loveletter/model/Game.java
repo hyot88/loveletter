@@ -14,7 +14,10 @@ public class Game {
     private final List<String> gameLog;
     private boolean roundOver;
     private Player roundWinner;
+    private String roundWinReason;
     private int currentRound;
+    private Player lastEliminatedPlayer;  // 마지막 탈락 플레이어
+    private String lastEliminationReason;  // 마지막 탈락 사유
 
     public Game(String id, List<Player> players) {
         this.id = id;
@@ -98,12 +101,36 @@ public class Game {
         this.roundWinner = winner;
     }
 
+    public String getRoundWinReason() {
+        return roundWinReason;
+    }
+
+    public void setRoundWinReason(String reason) {
+        this.roundWinReason = reason;
+    }
+
     public int getCurrentRound() {
         return currentRound;
     }
 
     public void incrementRound() {
         this.currentRound++;
+    }
+
+    public Player getLastEliminatedPlayer() {
+        return lastEliminatedPlayer;
+    }
+
+    public void setLastEliminatedPlayer(Player player) {
+        this.lastEliminatedPlayer = player;
+    }
+
+    public String getLastEliminationReason() {
+        return lastEliminationReason;
+    }
+
+    public void setLastEliminationReason(String reason) {
+        this.lastEliminationReason = reason;
     }
 
     public void addToDiscardPile(Card card) {
@@ -157,6 +184,9 @@ public class Game {
     public void resetForNewRound() {
         this.roundOver = false;
         this.roundWinner = null;
+        this.roundWinReason = null;
+        this.lastEliminatedPlayer = null;
+        this.lastEliminationReason = null;
         this.gameLog.clear();
         this.discardPile.clear();
         this.secretCard = null;
